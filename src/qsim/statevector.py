@@ -4,17 +4,17 @@ import numpy as np
 # The brilliance is that if observed once, no distinguishment can be made 
 # When another gate is applied, distinguihsments are made
 
-# The Hadamard Gate takes a definite qubit and converts it into an equal superposition
+# The hadamard gate takes a definite qubit and converts it into an equal superposition
 h_gate = (1/np.sqrt(2)) * np.array([[1,1],[1,-1]], dtype = complex)
 
-# The X Gate is the quantum "NOT": flips 0 and 1
+# The x gate is the quantum "NOT": flips 0 and 1
 x_gate = np.array([[0,1],[1,0]], dtype = complex)
 
-# The Z Gate leaves positions alone, but flips the phase
+# The z gate leaves positions alone, but flips the phase
 # This helps reveal interference and shows phase changes
 z_gate = np.array([[1,0],[0,-1]], dtype = complex)
 
-# The Y Gate flips the one and zero and applies a phase change
+# The y gate flips the one and zero and applies a phase change
 y_gate = np.array([[0, -1j],[1j, 0]], dtype=complex)
 
 # The statevector represents all possibilites of the system
@@ -23,7 +23,7 @@ class Statevector:
     def __init__(self, n):
         self.num_qubits = n
         dimensions = 2 ** n # Our vector is length 2^n, so that it can represent all possible values
-        self.data = np.zeros(dimensions, dtype = complex) # Initializing probabilities of each value
+        self.data = np.zeros(dimensions, dtype = complex) # Initializing amplitudes of each value
         self.data[0] = 1.0 # Start in the |000...0> state
 
     def __repr__(self):
@@ -48,8 +48,8 @@ class Statevector:
 
         self.data = tensor.reshape(2**self.num_qubits) # Reflatten tensor back to a statevector
     
-    def hadamard(self, index):
-        self.apply(h_mat, index)
+    def h(self, index):
+        self.apply(h_gate, index)
 
     def x(self, index):
         self.apply(x_gate, index)
