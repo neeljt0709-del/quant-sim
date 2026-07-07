@@ -6,59 +6,83 @@ from src.qsim.statevector import Statevector
 # np.allclose checks two arrays to within a small floating-point tolerance
 
 def test_initial(): # Checks that the initial state is definite at |000...0>
-    sv = Statevector(2)
+    test = Statevector(2)
     expected = np.array([1,0,0,0], dtype = complex)
-    assert np.allclose(sv.data, expected)
+    assert np.allclose(test.data, expected)
 
 def test_hadamard(): # Checking hadamard gate creates equal superposition
-    sv = Statevector(1)
-    sv.h(0)
+    test = Statevector(1)
+    test.h(0)
     expected = np.array([0.5, 0.5])
-    assert np.allclose(sv.probabilities(), expected)
+    assert np.allclose(test.probabilities(), expected)
 
 def test_hadamard_twice(): # Tests that using hadamard twice gives the identity
-    sv = Statevector(1)
-    sv.h(0)
-    sv.h(0)
+    test = Statevector(1)
+    test.h(0)
+    test.h(0)
     expected = np.array([1, 0], dtype=complex)
-    assert np.allclose(sv.data, expected)
+    assert np.allclose(test.data, expected)
 
 
 def test_h_one(): # Tests hadamard on one qubit in two qubit system
-    sv = Statevector(2)
-    sv.h(0)
+    test = Statevector(2)
+    test.h(0)
     expected = np.array([1/np.sqrt(2), 0, 1/np.sqrt(2), 0], dtype=complex)
-    assert np.allclose(sv.data, expected)
+    assert np.allclose(test.data, expected)
 
 
 def test_x(): # Tests x gate works as 'NOT'
-    sv = Statevector(1)
-    sv.x(0)
+    test = Statevector(1)
+    test.x(0)
     expected = np.array([0, 1], dtype=complex)
-    assert np.allclose(sv.data, expected)
+    assert np.allclose(test.data, expected)
 
 
 def test_z(): # Tests that the z gate leaves positions alone
-    sv = Statevector(1)
-    sv.z(0)
+    test = Statevector(1)
+    test.z(0)
     expected = np.array([1, 0], dtype=complex)
-    assert np.allclose(sv.data, expected)
+    assert np.allclose(test.data, expected)
 
 
-def test_z(): # Tests that the z gate flips phase
-    sv = Statevector(1)
-    sv.x(0)
-    sv.z(0)
+def test_z_phase(): # Tests that the z gate flips phase
+    test = Statevector(1)
+    test.x(0)
+    test.z(0)
     expected = np.array([0, -1], dtype=complex)
-    assert np.allclose(sv.data, expected)
+    assert np.allclose(test.data, expected)
 
 
 def test_y(): # Tests that y gate flips the zero to imaginary phase one
-    sv = Statevector(1)
-    sv.y(0)
+    test = Statevector(1)
+    test.y(0)
     expected = np.array([0, 1j], dtype=complex)
-    assert np.allclose(sv.data, expected)
+    assert np.allclose(test.data, expected)
 
 
     # Tests for measurement
-    # Uses a fixed seed rather than an unknown in order to 
+    
+def test_collapse(): # Tests that the resulting data collapses
+    test = Statevector(1)
+    test.h(0)
+    outcome = test.measure(0)
+    expected = np.zeros(2)
+    expected[outcome] = 1
+    assert np.allclose(test.data, expected)
+
+def test_variance(): # Tests for variance in measurement results
+    lst = []
+    for i in range(1000):
+        test = Statevector(1)
+        test.h(0)
+        lst.append(test.measure(0))
+    assert  430 < sum(lst) < 570 # Approximately +/- 4 standard deviations
+
+def test_definite(): # Checks measure for a definite qubit
+    test = Statevector(1)
+    test.x(0)
+    outcome = test.measure(0)
+    expected = np.array([0,1])
+    assert np.allclose(expected, test.data)
+    assert outcome == 1
+
