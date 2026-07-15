@@ -133,3 +133,8 @@ def test_cnot_phase_kickback():
     # Phase kickback leaves target unchanged, but control changes signs
     expected = np.array([0.5, -0.5, -0.5, 0.5], dtype=complex)
     assert np.allclose(expected, test.data)
+
+# Retrieves (amplitude)^2 for all basis states
+def get_probs(sv):
+    return np.abs(sv.data) ** 2
+
