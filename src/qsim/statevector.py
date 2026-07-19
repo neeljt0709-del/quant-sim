@@ -99,6 +99,15 @@ class Statevector:
     def reset(self, index):
         self.apply(reset_gate, index)
 
+    # The CNOT gate flips everything in a target qubit where the control qubit is |1>
+    # This helps represent quantum entanglement and the Bell State
+    def cnot(self, control, target):
+        tensor = self.data.reshape([2]*self.num_qubits)
+        tensor = np.moveaxis(tensor, [control, target], [0,1])
+        tensor[1,0], tensor[1,1] = tensor[1,1], np.copy(tensor[1,0])
+        tensor = np.moveaxis(tensor, [0,1], [control, target])
+        self.data = tensor.reshape(2 ** self.num_qubits)
+
     # This function is a way of measuring a specific qubit, gain using tensor logic
     # It is important to note we use numpy's random generator, with seed taken from the Mac OS System
     def measure(self, index):
@@ -120,28 +129,50 @@ class Statevector:
         self.data = tensor.reshape(2 ** self.num_qubits)
         return outcome
 
-    # The CNOT gate flips everything in a target qubit where the control qubit is |1>
-    # This helps represent quantum entanglement and the Bell State
-    def cnot(self, control, target):
-        tensor = self.data.reshape([2]*self.num_qubits)
-        tensor = np.moveaxis(tensor, [control, target], [0,1])
-        tensor[1,0], tensor[1,1] = tensor[1,1], np.copy(tensor[1,0])
-        tensor = np.moveaxis(tensor, [0,1], [control, target])
-        self.data = tensor.reshape(2 ** self.num_qubits)
+    def copy(self):
+        # Returns a new, independent Statevector with the same amplitudes.
+        # Mutating the copy will never affect the original.
+        clone = Statevector(self.num_qubits)
+        clone.data = np.copy(self.data)
+        return clone
+
+    
 
 # This is how we represent circuits
 # Ordered sequences of applying gates and measuring qubits
 class Circuit:
-    memory = {'h': Statevector.h, 'x': Statevector.x, 'y': Statevector.y, 'z': Statevector.z, 'cnot': Statevector.cnot}
+    memory = {'h': Statevector.h, 'x': Statevector.x, 'y': Statevector.y, 'z': Statevector.z, 'cnot': Statevector.cnot, 'reset': Statevector.reset, 'measure': Statevector.measure}
+    r_mem = {'rx': Statevector.rotate_x, 'ry': Statevector.rotate_y, 'rz': Statevector.rotate_z}
     def __init__(self, n):
         self.num_qubits = n
         self.gates = [] # This is static; it keeps track of the gates and their associated qubits
-    def add_gate(self, gate, qubits): # qubits should be a list
-        self.gates.append([gate, qubits])
+        self.results = [] # Keeps track of measured qubits
+        self.shot = 0
+    def add_gate(self, gate, qubits, theta = 0): # qubits should be a list
+        assert gate in Circuit.memory or gate in Circuit.r_mem
+        if gate in Circuit.memory:
+            self.gates.append([gate, qubits])
+        else:
+            self.gates.append([gate, theta, qubits])
     def implement(self, sv): # Implements the circuit on a given statevector
+        self.shot += 1
+        self.copy = sv.copy()
         for gate in self.gates:
-            func = self.memory[gate[0]]
-            args = gate[1]
-            for i in args:
-                assert i < sv.num_qubits - 1
-            func(sv, *args)
+            if gate[0] in Circuit.memory:
+                func = self.memory[gate[0]]
+                args = gate[1]
+                for i in args:
+                    assert i <= sv.num_qubits - 1
+                result = func(self.copy, *args)
+                if gate[0] == 'measure':
+                    self.results.append([gate[1][0], result, self.shot])
+            else:
+                func = self.r_mem[gate[0]]
+                args = gate[2]
+                for i in args:
+                    assert i <= sv.num_qubits - 1
+                func(self.copy, gate[1], *args)
+        return self.results, self.copy
+    def reset(self):
+        self.shot = 0
+        self.results = []

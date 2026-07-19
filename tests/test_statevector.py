@@ -1,6 +1,6 @@
 # pytest runs all functions in this file beginning with 'test_'
 import numpy as np
-from src.qsim.statevector import Statevector
+from src.qsim.statevector import Statevector, Circuit
 import pytest
 
 # Manual tests to check all gates
@@ -244,3 +244,130 @@ class TestInvalidInput:
         with pytest.raises(Exception):
             test.rotate_x(np.pi, 5)
 
+def test_add_gate_rejects_unknown_gate_name():
+    circuit = Circuit(1)
+    with pytest.raises(AssertionError):
+        circuit.add_gate('not_a_real_gate', [0])
+ 
+ 
+def test_add_gate_stores_simple_gate():
+    circuit = Circuit(1)
+    circuit.add_gate('h', [0])
+    assert circuit.gates == [['h', [0]]]
+ 
+ 
+def test_add_gate_stores_rotation_gate_with_theta():
+    circuit = Circuit(1)
+    circuit.add_gate('rx', [0], theta=np.pi / 2)
+    assert circuit.gates == [['rx', np.pi / 2, [0]]]
+ 
+ 
+# ---------------------------------------------------------------------------
+# Circuit: execution
+# ---------------------------------------------------------------------------
+ 
+def test_implement_does_not_mutate_caller_statevector():
+    template = Statevector(1)
+    circuit = Circuit(1)
+    circuit.add_gate('x', [0])
+    circuit.implement(template)
+    # caller's original object must remain untouched
+    assert template.probabilities()[0] == pytest.approx(1.0, abs=1e-9)
+ 
+ 
+def test_implement_returns_final_collapsed_data():
+    template = Statevector(1)
+    circuit = Circuit(1)
+    circuit.add_gate('x', [0])
+    _, final_sv = circuit.implement(template)
+    probs = final_sv.probabilities()
+    assert probs[1] == pytest.approx(1.0, abs=1e-9)
+ 
+ 
+def test_implement_records_measurement_with_shot_number():
+    template = Statevector(1)
+    circuit = Circuit(1)
+    circuit.add_gate('x', [0])
+    circuit.add_gate('measure', [0])
+    circuit.implement(template)
+    assert len(circuit.results) == 1
+    qubit, outcome, shot = circuit.results[0]
+    assert qubit == 0
+    assert outcome == 1
+    assert shot == 1
+ 
+ 
+def test_implement_accumulates_results_and_increments_shot():
+    template = Statevector(1)
+    circuit = Circuit(1)
+    circuit.add_gate('x', [0])
+    circuit.add_gate('measure', [0])
+ 
+    circuit.implement(template)
+    circuit.implement(template)
+    circuit.implement(template)
+ 
+    assert len(circuit.results) == 3
+    shots_seen = [entry[2] for entry in circuit.results]
+    assert shots_seen == [1, 2, 3]
+ 
+ 
+def test_implement_repeated_shots_do_not_leak_collapse_into_template():
+    # Regression test for the "does the template stay pristine" property
+    template = Statevector(1)
+    circuit = Circuit(1)
+    circuit.add_gate('h', [0])
+    circuit.add_gate('measure', [0])
+ 
+    for _ in range(20):
+        circuit.implement(template)
+        # template must be exactly |0> before every single shot
+        assert template.probabilities()[0] == pytest.approx(1.0, abs=1e-9)
+ 
+ 
+def test_bell_circuit_measurements_always_agree():
+    np.random.seed(2)
+    template = Statevector(2)
+    circuit = Circuit(2)
+    circuit.add_gate('h', [0])
+    circuit.add_gate('cnot', [0, 1])
+    circuit.add_gate('measure', [0])
+    circuit.add_gate('measure', [1])
+ 
+    for _ in range(50):
+        circuit.implement(template)
+ 
+    # group outcomes by shot and check q0 == q1 within each shot
+    by_shot = {}
+    for qubit, outcome, shot in circuit.results:
+        by_shot.setdefault(shot, {})[qubit] = outcome
+ 
+    for shot, outcomes in by_shot.items():
+        assert outcomes[0] == outcomes[1]
+ 
+ 
+# ---------------------------------------------------------------------------
+# Circuit: reset
+# ---------------------------------------------------------------------------
+ 
+def test_reset_clears_results_and_shot_counter():
+    template = Statevector(1)
+    circuit = Circuit(1)
+    circuit.add_gate('x', [0])
+    circuit.add_gate('measure', [0])
+    circuit.implement(template)
+    circuit.implement(template)
+ 
+    circuit.reset()
+ 
+    assert circuit.results == []
+    assert circuit.shot == 0
+ 
+ 
+def test_reset_does_not_clear_the_gate_sequence():
+    circuit = Circuit(1)
+    circuit.add_gate('h', [0])
+    circuit.add_gate('measure', [0])
+    circuit.reset()
+    # the circuit definition itself should survive a reset
+    assert circuit.gates == [['h', [0]], ['measure', [0]]]
