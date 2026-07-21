@@ -173,6 +173,3 @@ class Circuit:
                     assert i <= sv.num_qubits - 1
                 func(self.copy, gate[1], *args)
         return self.results, self.copy
-    def reset(self):
-        self.shot = 0
-        self.results = []
