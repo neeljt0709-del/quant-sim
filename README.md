@@ -23,9 +23,9 @@ Statevector(n): Initializes an n-qubit register in the ∣0⟩^n state
 
 h(index): Apply Hadamard to qubit index
 
-x(index)/y(index)/z(index): Apply Pauli Gates
+x(index) / y(index) / z(index): Apply Pauli Gates
 
-rotate_x(theta, index)/rotate_y(theta, index)/rotate_z(theta, index): Apply parameterized rotations
+rotate_x(theta, index) / rotate_y(theta, index) / rotate_z(theta, index): Apply parameterized rotations
 
 cnot(control, target): Apply controlled-NOT
 
